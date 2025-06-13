@@ -4,11 +4,12 @@ const jwt = require('jsonwebtoken')
 
 const getAllClassifieds = async (req, res) => {
 	try {
-		const { limit = 20, offset = 0, tags } = req.query
+		const { limit = 20, offset = 0, tags, currency } = req.query
 
 		let userId = null
 		let userFavorites = []
-		let userCurrency = 'USD'
+		let userCurrency =
+			currency && ['USD', 'UAH', 'EUR'].includes(currency) ? currency : 'USD'
 
 		const authHeader = req.headers.authorization
 		if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -66,6 +67,7 @@ const getAllClassifieds = async (req, res) => {
 			parsedOffset,
 			tags,
 			userId: userId || 'No user',
+			userCurrency,
 		})
 
 		const classifieds = await prisma.classified.findMany({
@@ -75,9 +77,13 @@ const getAllClassifieds = async (req, res) => {
 				user: {
 					select: {
 						name: true,
+						nickname: true,
+						trustRating: true,
+						bonuses: true,
 						avatarUrl: true,
 						phoneNumber: true,
 						successfulDeals: true,
+						showPhone: true,
 					},
 				},
 				tags: {
@@ -118,10 +124,14 @@ const getAllClassifieds = async (req, res) => {
 				favoritesBool: userId ? userFavorites.includes(classified.id) : false,
 				user: {
 					name: classified.user.name || 'Аноним',
+					nickname: classified.user.nickname,
+					trustRating: classified.user.trustRating,
+					bonuses: classified.user.bonuses,
 					avatarUrl:
 						classified.user.avatarUrl ||
 						`${process.env.CALLBACK_URL}/public/avatar.png`,
 					phoneNumber: classified.user.phoneNumber,
+					showPhone: classified.user.showPhone,
 					successfulDeals: classified.user.successfulDeals,
 				},
 				tags:
